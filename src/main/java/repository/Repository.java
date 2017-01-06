@@ -1,3 +1,5 @@
+package repository;
+
 import java.sql.*;
 
 public class Repository {
@@ -13,14 +15,25 @@ public class Repository {
         }
     }
 
+    public Connection getConnection(){
+        return connection;
+    }
+
     public ResultSet query(String query) {
         Statement stmt = null;
+        ResultSet resultSet = null;
         try {
-            stmt = connection.createStatement();
-            return stmt.executeQuery(query);
+            stmt = getConnection().createStatement();
+            resultSet = stmt.executeQuery(query);
         } catch (SQLException e) {
             e.printStackTrace();
+        }finally {
+            try {
+                stmt.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return resultSet;
         }
-        return null;
     }
 }
