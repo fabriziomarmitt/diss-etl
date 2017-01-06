@@ -1,0 +1,13 @@
+group 'br.com.marmitt'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'lib')
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
