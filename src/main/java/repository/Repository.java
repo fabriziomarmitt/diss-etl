@@ -6,6 +6,32 @@ public class Repository {
 
     private Connection connection;
 
+
+
+    public class Result {
+        private final Statement statement;
+        private final ResultSet resultSet;
+
+        public Result(ResultSet resultSet, Statement statement){
+            this.resultSet = resultSet;
+            this.statement = statement;
+        }
+
+        public boolean next() throws SQLException {
+            boolean next = resultSet.next();
+            if(!next){
+                resultSet.close();
+                statement.close();
+            }
+            return next;
+        }
+
+        public ResultSet getResultSet(){
+            return resultSet;
+        }
+
+    }
+
     public Repository(String driver, String dsn, String usr, String pwd) {
         try {
             Class.forName(driver).newInstance();
@@ -19,21 +45,27 @@ public class Repository {
         return connection;
     }
 
-    public ResultSet query(String query) {
-        Statement stmt = null;
-        ResultSet resultSet = null;
+    public Result query(String query) {
+        Statement stmt;
+        Result result = null;
         try {
             stmt = getConnection().createStatement();
-            resultSet = stmt.executeQuery(query);
+            result = new Result(stmt.executeQuery(query), stmt);
         } catch (SQLException e) {
             e.printStackTrace();
         }finally {
-            try {
-                stmt.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-            return resultSet;
+            return result;
+        }
+    }
+
+    public Result preparedQuery(PreparedStatement preparedStatement) {
+        Result result = null;
+        try {
+            result = new Result(preparedStatement.executeQuery(), preparedStatement);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }finally {
+            return result;
         }
     }
 }
