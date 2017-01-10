@@ -1,12 +1,10 @@
-package repository;
+package br.com.marmitt.diss_etl.repository;
 
 import java.sql.*;
 
 public class Repository {
 
     private Connection connection;
-
-
 
     public class Result {
         private final Statement statement;

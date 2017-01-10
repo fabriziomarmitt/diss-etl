@@ -1,4 +1,4 @@
-package repository;
+package br.com.marmitt.diss_etl.repository;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -27,6 +27,7 @@ public class AsRepository extends AbstractRepository{
         PreparedStatement preparedStatement
                 = connection.prepareStatement("select " +
                 "   p.pess_cd_jornal cd_jornal " +
+                "  ,p.pess_cd_pessoa cd_pessoa " +
                 "  ,p.pess_nm_pessoa nm_pessoa " +
                 "  ,p.pess_id_sexo id_sexo " +
                 "  ,p.pess_dt_nasc dt_nasc " +
@@ -55,7 +56,7 @@ public class AsRepository extends AbstractRepository{
                 "  and pe.PENTR_CD_PESSOA = p.pess_cd_pessoa " +
                 "  left join v_endereco ve " +
                 "    on ve.END_CD_ENDERECO = pe.PENTR_CD_ENDERECO   " +
-                "where pe.rnk = 1");
+                "where pe.rnk = 1 and p.pess_cd_jornal = 1 and p.pess_cd_cpf = ?");
         preparedStatement.setBigDecimal(1, cpf);
         return repository.preparedQuery(preparedStatement);
     }

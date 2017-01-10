@@ -1,4 +1,4 @@
-package repository;
+package br.com.marmitt.diss_etl.repository;
 
 import java.io.IOException;
 import java.util.Properties;

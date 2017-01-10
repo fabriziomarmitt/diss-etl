@@ -1,9 +1,9 @@
-package model.pessoa;
+package br.com.marmitt.diss_etl.model.pessoa;
 
 import java.math.BigDecimal;
 import java.sql.Date;
-import java.util.ArrayList;
 import java.util.List;
+
 
 public class Pessoa {
     private BigDecimal cdCpf;

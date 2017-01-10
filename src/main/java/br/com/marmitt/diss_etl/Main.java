@@ -1,7 +1,10 @@
-import model.pessoa.Pessoa;
-import repository.AsRepository;
-import repository.DissRepository;
-import repository.Repository;
+package br.com.marmitt.diss_etl;
+
+
+import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
+import br.com.marmitt.diss_etl.repository.AsRepository;
+import br.com.marmitt.diss_etl.repository.DissRepository;
+import br.com.marmitt.diss_etl.repository.Repository;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -73,10 +76,12 @@ public class Main {
                 }};
                 cdPessoa.addAll(pessoa.getCdPessoa());
             }
-            Random random = new Random();
-            Pessoa pessoaChosen = pessoas.get(random.nextInt(pessoas.size()));
-            pessoaChosen.setCdPessoa(cdPessoa);
-            dissRepository.insertPessoa(pessoaChosen);
+            if(pessoas.size() > 0) {
+                Random random = new Random();
+                Pessoa pessoaChosen = pessoas.get(random.nextInt(pessoas.size()));
+                pessoaChosen.setCdPessoa(cdPessoa);
+                dissRepository.insertPessoa(pessoaChosen);
+            }
         }
 
 

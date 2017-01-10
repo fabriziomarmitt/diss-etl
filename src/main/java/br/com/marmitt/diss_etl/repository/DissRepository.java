@@ -1,7 +1,7 @@
-package repository;
+package br.com.marmitt.diss_etl.repository;
 
+import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
 import com.google.gson.Gson;
-import model.pessoa.Pessoa;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
