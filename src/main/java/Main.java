@@ -50,7 +50,7 @@ public class Main {
                     setCdCpf(cpf);
                     setCdPessoa(
                         new ArrayList<BigDecimal>(){{
-                            add(result.getResultSet().getBigDecimal("pess_cd_pessoa"));
+                            add(result.getResultSet().getBigDecimal("cd_pessoa"));
                         }}
                     );
                     setCdJornal(result.getResultSet().getInt("pess_cd_jornal"));
