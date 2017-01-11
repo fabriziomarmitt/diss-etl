@@ -1,6 +1,7 @@
 package br.com.marmitt.diss_etl.repository;
 
 import java.sql.*;
+import java.util.HashMap;
 
 public class Repository {
 
@@ -24,10 +25,21 @@ public class Repository {
             return next;
         }
 
+
         public ResultSet getResultSet(){
             return resultSet;
         }
 
+        public HashMap<String,Object> getSingleResult() throws SQLException {
+            HashMap<String, Object> hashMap = new HashMap<>();
+            resultSet.next();
+            for(int i = 1; i<=resultSet.getMetaData().getColumnCount(); i++){
+                hashMap.put(resultSet.getMetaData().getColumnName(i), resultSet.getObject(i));
+            }
+            resultSet.close();
+            statement.close();
+            return hashMap;
+        }
     }
 
     public Repository(String driver, String dsn, String usr, String pwd) {

@@ -9,39 +9,37 @@ WITH (
   OIDS=FALSE
 );
 ALTER TABLE tmp_cpf
-  OWNER TO postgres
+  OWNER TO postgres;
 
 
--- Table: public."PESSOA"
-
--- DROP TABLE public."PESSOA";
-
-CREATE TABLE public."PESSOA"
+CREATE TABLE "PESSOA"
 (
-    "CD_CPF" numeric(11),
-    "CD_PESSOA" jsonb NOT NULL,
-    "CD_JORNAL" integer NOT NULL,
-    "NM_PESSOA" text COLLATE pg_catalog."default" NOT NULL,
-    "SEXO" character(1) COLLATE pg_catalog."default",
-    "DT_NASC" date,
-    "ID_ESTADO_CIVIL" character varying(10) COLLATE pg_catalog."default",
-    "ID_EMAIL" character varying(100) COLLATE pg_catalog."default",
-    "CEP" character(8) COLLATE pg_catalog."default",
-    "UF" character(2) COLLATE pg_catalog."default" NOT NULL,
-    "CIDADE" character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    "BAIRRO" character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    "TIPO_LOGRADOURO" character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    "LOGRADOURO" character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    "NUMERO" character varying(10) COLLATE pg_catalog."default",
-    "COMPLEMENTO" character varying(10) COLLATE pg_catalog."default",
-    "DT_INCLUSAO" date,
-    "DT_ALTERACAO" date,
-    CONSTRAINT pk_pessoa PRIMARY KEY ("CD_CPF")
+  "CD_CPF" numeric(11,0) NOT NULL,
+  "CD_PESSOA" jsonb NOT NULL,
+  "CD_JORNAL" integer NOT NULL,
+  "NM_PESSOA" text NOT NULL,
+  "SEXO" character(1),
+  "DT_NASC" date,
+  "ID_ESTADO_CIVIL" character varying(10),
+  "ID_EMAIL" character varying(100),
+  "CEP" character(8),
+  "UF" character(2),
+  "CIDADE" character varying(50),
+  "BAIRRO" character varying(50),
+  "TIPO_LOGRADOURO" character varying(50),
+  "LOGRADOURO" character varying(50),
+  "NUMERO" character varying(10),
+  "COMPLEMENTO" character varying(10),
+  "DT_INCLUSAO" date,
+  "DT_ALTERACAO" date,
+  "QTD_ASS" bigint NOT NULL DEFAULT 0,
+  "QTD_ASS_ATIVAS" bigint NOT NULL DEFAULT 0,
+  "TOTAL_PAGO" money NOT NULL DEFAULT 0,
+  CONSTRAINT pk_pessoa PRIMARY KEY ("CD_CPF")
 )
 WITH (
-    OIDS = FALSE
-)
-TABLESPACE pg_default;
+  OIDS=FALSE
+);
+ALTER TABLE "PESSOA"
+  OWNER TO postgres;
 
-ALTER TABLE public."PESSOA"
-    OWNER to postgres;

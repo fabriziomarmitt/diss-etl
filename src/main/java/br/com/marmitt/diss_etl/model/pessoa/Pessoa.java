@@ -1,8 +1,16 @@
 package br.com.marmitt.diss_etl.model.pessoa;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.sql.Date;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 
 public class Pessoa {
@@ -14,16 +22,27 @@ public class Pessoa {
     private Date dtNasc;
     private String idEstadoCivil;
     private String idEmail;
-    private BigDecimal cep;
-    private String uf;
-    private String cidade;
-    private String bairro;
-    private String tipoLogradouro;
-    private String logradouro;
-    private String numero;
-    private String complemento;
     private Date dtInclusao;
     private Date dtAlteracao;
+
+    public Pessoa(ResultSet resultSet) throws SQLException {
+        Gson gson = new Gson();
+        cdCpf = resultSet.getBigDecimal("CD_CPF");
+        try {
+            cdPessoa = gson.fromJson(resultSet.getString("CD_PESSOA"), new TypeToken<ArrayList<BigDecimal>>() {
+            }.getType());
+        }catch (Exception e){
+            cdPessoa = new ArrayList<BigDecimal>(){{ add(resultSet.getBigDecimal("CD_PESSOA")); }};
+        }
+        cdJornal = resultSet.getInt("CD_JORNAL");
+        nmPessoa = resultSet.getString("NM_PESSOA");
+        sexo = resultSet.getString("SEXO");
+        dtNasc = resultSet.getDate("DT_NASC");
+        idEstadoCivil = resultSet.getString("ID_ESTADO_CIVIL");
+        idEmail = resultSet.getString("ID_EMAIL");
+        dtInclusao = resultSet.getDate("DT_INCLUSAO");
+        dtAlteracao = resultSet.getDate("DT_ALTERACAO");
+    }
 
     public BigDecimal getCdCpf() {
         return cdCpf;
@@ -94,78 +113,6 @@ public class Pessoa {
 
     public Pessoa setIdEmail(String idEmail) {
         this.idEmail = idEmail;
-        return this;
-    }
-
-    public BigDecimal getCep() {
-        return cep;
-    }
-
-    public Pessoa setCep(BigDecimal cep) {
-        this.cep = cep;
-        return this;
-    }
-
-    public String getUf() {
-        return uf;
-    }
-
-    public Pessoa setUf(String uf) {
-        this.uf = uf;
-        return this;
-    }
-
-    public String getCidade() {
-        return cidade;
-    }
-
-    public Pessoa setCidade(String cidade) {
-        this.cidade = cidade;
-        return this;
-    }
-
-    public String getBairro() {
-        return bairro;
-    }
-
-    public Pessoa setBairro(String bairro) {
-        this.bairro = bairro;
-        return this;
-    }
-
-    public String getTipoLogradouro() {
-        return tipoLogradouro;
-    }
-
-    public Pessoa setTipoLogradouro(String tipoLogradouro) {
-        this.tipoLogradouro = tipoLogradouro;
-        return this;
-    }
-
-    public String getLogradouro() {
-        return logradouro;
-    }
-
-    public Pessoa setLogradouro(String logradouro) {
-        this.logradouro = logradouro;
-        return this;
-    }
-
-    public String getNumero() {
-        return numero;
-    }
-
-    public Pessoa setNumero(String numero) {
-        this.numero = numero;
-        return this;
-    }
-
-    public String getComplemento() {
-        return complemento;
-    }
-
-    public Pessoa setComplemento(String complemento) {
-        this.complemento = complemento;
         return this;
     }
 

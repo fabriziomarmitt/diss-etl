@@ -1,6 +1,7 @@
 package br.com.marmitt.diss_etl;
 
 
+import br.com.marmitt.diss_etl.model.pessoa.Endereco;
 import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
 import br.com.marmitt.diss_etl.repository.AsRepository;
 import br.com.marmitt.diss_etl.repository.DissRepository;
@@ -9,14 +10,16 @@ import br.com.marmitt.diss_etl.repository.Repository;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Random;
 
 public class Main {
 
     public static void main(String[] args){
         try {
-            Main.stepTwo();
-        } catch (SQLException e) {
+            Main.stepFour();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -40,7 +43,7 @@ public class Main {
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
 
-        Repository.Result allTmpCpfs = dissRepository.getAllTmpCpf();
+        Repository.Result allTmpCpfs = dissRepository.getAllTmpCpfNotInPessoa();
 
         while(allTmpCpfs.next()) {
             BigDecimal cpf = allTmpCpfs.getResultSet().getBigDecimal("cpf");
@@ -49,41 +52,80 @@ public class Main {
 
             Repository.Result result = asRepository.getPessoaByCpf(cpf);
             while(result.next()){
-                Pessoa pessoa = new Pessoa(){{
-                    setCdCpf(cpf);
-                    setCdPessoa(
-                        new ArrayList<BigDecimal>(){{
-                            add(result.getResultSet().getBigDecimal("cd_pessoa"));
-                        }}
-                    );
-                    setCdJornal(result.getResultSet().getInt("pess_cd_jornal"));
-                    setNmPessoa(result.getResultSet().getString("pess_nm_pessoa"));
-                    setSexo(result.getResultSet().getString("pess_id_sexo"));
-                    setDtNasc(result.getResultSet().getDate("pess_dt_nasc"));
-                    setIdEstadoCivil(result.getResultSet().getString("pess_id_estado_civil"));
-                    setIdEmail(result.getResultSet().getString("pess_id_email"));
-                    setCep(result.getResultSet().getBigDecimal("cep"));
-                    setUf(result.getResultSet().getString("uf"));
-                    setCidade(result.getResultSet().getString("cidade"));
-                    setBairro(result.getResultSet().getString("bairro"));
-                    setTipoLogradouro(result.getResultSet().getString("tipo_logradouro"));
-                    setLogradouro(result.getResultSet().getString("logradouro"));
-                    setNumero(result.getResultSet().getString("numero"));
-                    setComplemento(result.getResultSet().getString("complemento"));
-                    setDtInclusao(result.getResultSet().getDate("pess_dt_inclusao"));
-                    setDtAlteracao(result.getResultSet().getDate("pess_dt_alteracao"));
-
-                }};
+                Pessoa pessoa = new Pessoa(result.getResultSet());
                 cdPessoa.addAll(pessoa.getCdPessoa());
+                pessoas.add(pessoa);
             }
             if(pessoas.size() > 0) {
-                Random random = new Random();
-                Pessoa pessoaChosen = pessoas.get(random.nextInt(pessoas.size()));
+                Pessoa pessoaChosen;
+                if(pessoas.size() == 1){
+                    pessoaChosen = pessoas.get(0);
+                }else {
+                    try {
+                        pessoaChosen = pessoas
+                                .stream()
+                                .filter(p -> p.getDtAlteracao() != null)
+                                .max(Comparator.comparing(Pessoa::getDtAlteracao))
+                                .get();
+                    }catch (Exception e){
+                        Random random = new Random();
+                        pessoaChosen = pessoas.get(random.nextInt(pessoas.size()));
+                    }
+                }
                 pessoaChosen.setCdPessoa(cdPessoa);
                 dissRepository.insertPessoa(pessoaChosen);
             }
         }
 
+
+    }
+
+    public static void stepThree() throws SQLException, InterruptedException {
+        // Buscar Endereço mais provável para cada pessoa
+        //
+        AsRepository asRepository = new AsRepository();
+        DissRepository dissRepository = new DissRepository();
+
+        Repository.Result allTmpCdPessoas = dissRepository.getAllPessoasWithEmptyEndereco();
+
+        while(allTmpCdPessoas.next()){
+            Pessoa pessoa = new Pessoa(allTmpCdPessoas.getResultSet());
+            BigDecimal[] listOfCdPessoa =pessoa.getCdPessoa().toArray(new BigDecimal[]{});
+            Repository.Result getMostLikelyEndereco = asRepository
+                    .getMostLikelyEndereco(listOfCdPessoa);
+            if(getMostLikelyEndereco.getResultSet().next()){
+                Endereco endereco = new Endereco(getMostLikelyEndereco.getResultSet());
+                dissRepository.setEnderecoFromPessoa(pessoa, endereco);
+                // forçar fechar conexao
+                getMostLikelyEndereco.next();
+            } else {
+                getMostLikelyEndereco.getResultSet().getStatement().close();
+                getMostLikelyEndereco.getResultSet().close();
+                pessoa.getCdPessoa().stream().forEach( cd -> System.out.print(cd.toString() + ", "));
+                System.out.println("\n----");
+            }
+        }
+    }
+
+    public static void stepFour() throws SQLException {
+        // Insert Qtd Assinaturas por pessoa
+        AsRepository asRepository = new AsRepository();
+        DissRepository dissRepository = new DissRepository();
+
+        Repository.Result pessoas = dissRepository.getAllPessoas();
+
+        while(pessoas.next()){
+            Pessoa pessoa = new Pessoa(pessoas.getResultSet());
+            HashMap<String, Object> assinaturasStatus = asRepository.getAssinaturasStats(pessoa);
+            if(assinaturasStatus.size() > 0){
+                dissRepository.setAssinaturaStatsFromPessoa(
+                        pessoa,
+                        (BigDecimal) assinaturasStatus.get("QTY_ASS"),
+                        (BigDecimal) assinaturasStatus.get("QTY_ASS_ATIVA"),
+                        (BigDecimal) assinaturasStatus.get("TOTAL_PAID")
+                );
+            }
+        }
 
     }
 }
