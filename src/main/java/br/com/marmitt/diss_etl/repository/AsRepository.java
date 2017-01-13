@@ -80,9 +80,11 @@ public class AsRepository extends AbstractRepository{
     public HashMap<String, Object> getAssinaturasStats(Pessoa pessoa) throws SQLException {
         Connection connection = repository.getConnection();
         String query = "select   " +
-                "  count(1) QTY_ASS  " +
-                "  , nvl(sum(CASE WHEN sit_nm_situacao = 'ATIVO' THEN 1 ELSE 0 END),0) QTY_ASS_ATIVA  " +
-                "  , nvl(sum(valor_pago),0) TOTAL_PAID  " +
+                "  count(1) QTD_ASS  " +
+                "  , nvl(sum(CASE WHEN sit_nm_situacao = 'ATIVO' THEN 1 ELSE 0 END),0) QTD_ASS_ATIVA  " +
+                "  , nvl(sum(valor_pago),0) TOTAL_PAGO  " +
+                "  , nvl(sum(valor_pago_3),0) TOTAL_PAGO_3  " +
+                "  , nvl(sum(valor_pago_12),0) TOTAL_PAGO_12  " +
                 " from(  " +
                 " select   " +
                 "  sa.SIT_NM_SITUACAO  " +
@@ -92,6 +94,18 @@ public class AsRepository extends AbstractRepository{
                 "      where par.pass_cd_jornal = pa.perass_cd_jornal  " +
                 "        and par.pass_cd_ass    = pa.perass_cd_ass  " +
                 "        and par.pass_dt_mesano_cont is not null) valor_pago  " +
+                "  , (select nvl(sum(nvl(par.pass_vl_pago,0)),0)  " +
+                "      from parcela_assinatura par  " +
+                "      where par.pass_cd_jornal = pa.perass_cd_jornal  " +
+                "        and par.pass_cd_ass    = pa.perass_cd_ass  " +
+                "        and par.pass_dt_mesano_cont is not null " +
+                "        and par.pass_dt_vcto BETWEEN sysdate-90 and sysdate) valor_pago_3  " +
+                "  , (select nvl(sum(nvl(par.pass_vl_pago,0)),0)  " +
+                "      from parcela_assinatura par  " +
+                "      where par.pass_cd_jornal = pa.perass_cd_jornal  " +
+                "        and par.pass_cd_ass    = pa.perass_cd_ass  " +
+                "        and par.pass_dt_mesano_cont is not null " +
+                "        and par.pass_dt_vcto BETWEEN sysdate-365 and sysdate) valor_pago_12  " +
                 " from periodo_assinatura pa   " +
                 "  inner join SITUACAO_ASSINATURA sa  " +
                 "    on sa.SIT_CD_SITUACAO = pa.PERASS_CD_SITUACAO  " +
@@ -107,5 +121,9 @@ public class AsRepository extends AbstractRepository{
         }
         Repository.Result result = repository.preparedQuery(preparedStatement);
         return result.getSingleResult();
+    }
+
+    public void close(){
+        close();
     }
 }

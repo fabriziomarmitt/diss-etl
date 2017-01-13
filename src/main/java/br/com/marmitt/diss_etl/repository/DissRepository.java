@@ -105,11 +105,11 @@ public class DissRepository extends AbstractRepository{
     }
 
     public Repository.Result getAllTmpCpfNotInPessoa() {
-        return repository.query("SELECT cpf FROM tmp_cpf WHERE cpf NOT IN (SELECT \"CD_CPF\" FROM \"PESSOA\")");
+        return repository.query("SELECT cpf FROM tmp_cpf left join \"PESSOA\" p on p.\"CD_CPF\" = tmp_cpf.cpf where p.\"CD_CPF\" is null");
     }
 
-    public Repository.Result getAllPessoas() {
-        return repository.query("SELECT * FROM \"PESSOA\"");
+    public Repository.Result getAllPessoasWithEmptyStats() {
+        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"QTD_ASS\" = 0");
     }
 
     public Repository.Result getAllPessoasWithEmptyEndereco() {
@@ -144,16 +144,18 @@ public class DissRepository extends AbstractRepository{
         }
     }
 
-    public void setAssinaturaStatsFromPessoa(Pessoa pessoa, BigDecimal qty_ass, BigDecimal qty_ass_ativa, BigDecimal total_paid) throws SQLException {
+    public void setAssinaturaStatsFromPessoa(Pessoa pessoa, BigDecimal qty_ass, BigDecimal qty_ass_ativa, BigDecimal total_paid, BigDecimal total_paid_3, BigDecimal total_paid_12) throws SQLException {
         logger.info("Setting Assinatura Updating Stats");
         PreparedStatement  stmt;
         Connection connection = repository.getConnection();
         try{
-            stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"QTD_ASS\"=?,\"QTD_ASS_ATIVAS\"=?,\"TOTAL_PAGO\" =? WHERE \"CD_CPF\" = ?");
+            stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"QTD_ASS\"=?,\"QTD_ASS_ATIVAS\"=?,\"TOTAL_PAGO\" =?, \"TOTAL_PAGO_3\"=?, \"TOTAL_PAGO_12\"=? WHERE \"CD_CPF\" = ?");
             int i = 1;
             stmt.setBigDecimal(i++, qty_ass);
             stmt.setBigDecimal(i++, qty_ass_ativa);
             stmt.setBigDecimal(i++, total_paid);
+            stmt.setBigDecimal(i++, total_paid_3);
+            stmt.setBigDecimal(i++, total_paid_12);
             stmt.setBigDecimal(i++, pessoa.getCdCpf());
             stmt.execute();
             stmt.close();
@@ -164,4 +166,9 @@ public class DissRepository extends AbstractRepository{
         }
 
     }
+
+    public void close(){
+        close();
+    }
+
 }

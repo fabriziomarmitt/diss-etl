@@ -78,4 +78,13 @@ public class Repository {
             return result;
         }
     }
+
+    public void close(){
+        try {
+            connection.close();
+        }catch (Exception e){
+            return;
+        }
+    }
+
 }

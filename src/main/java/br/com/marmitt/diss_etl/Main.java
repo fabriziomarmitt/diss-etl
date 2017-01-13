@@ -18,6 +18,8 @@ public class Main {
 
     public static void main(String[] args){
         try {
+            //Main.stepTwo();
+            //Main.stepThree();
             Main.stepFour();
         } catch (Exception e) {
             e.printStackTrace();
@@ -75,6 +77,9 @@ public class Main {
                 pessoaChosen.setCdPessoa(cdPessoa);
                 dissRepository.insertPessoa(pessoaChosen);
             }
+
+            asRepository.close();
+            dissRepository.close();
         }
 
 
@@ -105,6 +110,9 @@ public class Main {
                 System.out.println("\n----");
             }
         }
+
+        asRepository.close();
+        dissRepository.close();
     }
 
     public static void stepFour() throws SQLException {
@@ -112,7 +120,7 @@ public class Main {
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
 
-        Repository.Result pessoas = dissRepository.getAllPessoas();
+        Repository.Result pessoas = dissRepository.getAllPessoasWithEmptyStats();
 
         while(pessoas.next()){
             Pessoa pessoa = new Pessoa(pessoas.getResultSet());
@@ -120,12 +128,16 @@ public class Main {
             if(assinaturasStatus.size() > 0){
                 dissRepository.setAssinaturaStatsFromPessoa(
                         pessoa,
-                        (BigDecimal) assinaturasStatus.get("QTY_ASS"),
-                        (BigDecimal) assinaturasStatus.get("QTY_ASS_ATIVA"),
-                        (BigDecimal) assinaturasStatus.get("TOTAL_PAID")
+                        (BigDecimal) assinaturasStatus.get("QTD_ASS"),
+                        (BigDecimal) assinaturasStatus.get("QTD_ASS_ATIVA"),
+                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO"),
+                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO_3"),
+                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO_12")
                 );
             }
         }
+        asRepository.close();
+        dissRepository.close();
 
     }
 }

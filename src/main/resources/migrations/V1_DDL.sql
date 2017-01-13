@@ -11,6 +11,8 @@ WITH (
 ALTER TABLE tmp_cpf
   OWNER TO postgres;
 
+CREATE INDEX idx_only_tmp_cpf
+    ON tmp_cpf ( cpf );
 
 CREATE TABLE "PESSOA"
 (
@@ -35,6 +37,8 @@ CREATE TABLE "PESSOA"
   "QTD_ASS" bigint NOT NULL DEFAULT 0,
   "QTD_ASS_ATIVAS" bigint NOT NULL DEFAULT 0,
   "TOTAL_PAGO" money NOT NULL DEFAULT 0,
+  "TOTAL_PAGO_3" money NOT NULL DEFAULT 0,
+  "TOTAL_PAGO_12" money NOT NULL DEFAULT 0,
   CONSTRAINT pk_pessoa PRIMARY KEY ("CD_CPF")
 )
 WITH (
@@ -43,3 +47,8 @@ WITH (
 ALTER TABLE "PESSOA"
   OWNER TO postgres;
 
+CREATE INDEX idx_only_pessoa
+    ON "PESSOA" ( "CD_CPF" );
+
+CREATE INDEX idx_only_pessoa_cep
+    ON "PESSOA" ( "CEP" );
