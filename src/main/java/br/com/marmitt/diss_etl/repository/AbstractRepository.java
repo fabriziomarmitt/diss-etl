@@ -1,6 +1,7 @@
 package br.com.marmitt.diss_etl.repository;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Properties;
 
 public class AbstractRepository {
@@ -19,5 +20,9 @@ public class AbstractRepository {
         String password = prop.getProperty(namespace + ".password");
         String driverClassName = prop.getProperty(namespace + ".driverClassName");
         repository = new Repository(driverClassName, url, username, password);
+    }
+
+    public void close(){
+        repository.close();
     }
 }

@@ -3,6 +3,8 @@ package br.com.marmitt.diss_etl;
 
 import br.com.marmitt.diss_etl.model.pessoa.Endereco;
 import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
+import br.com.marmitt.diss_etl.model.pessoa.Stats;
+import br.com.marmitt.diss_etl.model.pessoa.TmpCpf;
 import br.com.marmitt.diss_etl.repository.AsRepository;
 import br.com.marmitt.diss_etl.repository.DissRepository;
 import br.com.marmitt.diss_etl.repository.Repository;
@@ -11,16 +13,21 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class Main {
 
+    public static Logger logger = Logger.getLogger(String.valueOf(Main.class));
+
     public static void main(String[] args){
         try {
-            //Main.stepTwo();
+            //Main.stepOne();
+            Main.stepTwo();
             //Main.stepThree();
-            Main.stepFour();
+            //Main.stepFour();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -31,11 +38,13 @@ public class Main {
         DissRepository dissRepository = new DissRepository();
 
         try {
-            Repository.Result pessoas = asRepository.getPessoasUniqueCpf();
-            dissRepository.insertCpfFromResultSet(pessoas.getResultSet());
+            List<TmpCpf> tmpCpfList = asRepository.getPessoasUniqueCpf();
+            dissRepository.insertTmpCpfs(tmpCpfList);
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        asRepository.close();
+        dissRepository.close();
     }
 
     public static void stepTwo() throws SQLException {
@@ -45,19 +54,11 @@ public class Main {
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
 
-        Repository.Result allTmpCpfs = dissRepository.getAllTmpCpfNotInPessoa();
+        List<TmpCpf> allTmpCpfs = dissRepository.getAllTmpCpfNotInPessoa();
 
-        while(allTmpCpfs.next()) {
-            BigDecimal cpf = allTmpCpfs.getResultSet().getBigDecimal("cpf");
-            ArrayList<BigDecimal> cdPessoa = new ArrayList<>();
-            ArrayList<Pessoa> pessoas = new ArrayList<>();
-
-            Repository.Result result = asRepository.getPessoaByCpf(cpf);
-            while(result.next()){
-                Pessoa pessoa = new Pessoa(result.getResultSet());
-                cdPessoa.addAll(pessoa.getCdPessoa());
-                pessoas.add(pessoa);
-            }
+        for(TmpCpf tmpCpf : allTmpCpfs){
+            List<Pessoa> pessoas = asRepository.getPessoaByCpf(tmpCpf.getCpf());
+            List<BigDecimal> cdPessoa = pessoas.stream().map(pessoa -> pessoa.getCdPessoa().get(0)).collect(Collectors.toList());
             if(pessoas.size() > 0) {
                 Pessoa pessoaChosen;
                 if(pessoas.size() == 1){
@@ -77,12 +78,9 @@ public class Main {
                 pessoaChosen.setCdPessoa(cdPessoa);
                 dissRepository.insertPessoa(pessoaChosen);
             }
-
-            asRepository.close();
-            dissRepository.close();
         }
-
-
+        asRepository.close();
+        dissRepository.close();
     }
 
     public static void stepThree() throws SQLException, InterruptedException {
@@ -91,18 +89,13 @@ public class Main {
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
 
-        Repository.Result allTmpCdPessoas = dissRepository.getAllPessoasWithEmptyEndereco();
+        List<Pessoa> allTmpCdPessoas = dissRepository.getAllPessoasWithEmptyEndereco();
 
-        while(allTmpCdPessoas.next()){
-            Pessoa pessoa = new Pessoa(allTmpCdPessoas.getResultSet());
-            BigDecimal[] listOfCdPessoa =pessoa.getCdPessoa().toArray(new BigDecimal[]{});
-            Repository.Result getMostLikelyEndereco = asRepository
-                    .getMostLikelyEndereco(listOfCdPessoa);
-            if(getMostLikelyEndereco.getResultSet().next()){
-                Endereco endereco = new Endereco(getMostLikelyEndereco.getResultSet());
-                dissRepository.setEnderecoFromPessoa(pessoa, endereco);
-                // forçar fechar conexao
-                getMostLikelyEndereco.next();
+        for(Pessoa pessoa : allTmpCdPessoas){
+            Endereco getMostLikelyEndereco = asRepository.getMostLikelyEndereco(pessoa.getCdPessoa());
+
+            if(getMostLikelyEndereco != null){
+                dissRepository.setEnderecoFromPessoa(getMostLikelyEndereco);
             } else {
                 getMostLikelyEndereco.getResultSet().getStatement().close();
                 getMostLikelyEndereco.getResultSet().close();
@@ -123,17 +116,14 @@ public class Main {
         Repository.Result pessoas = dissRepository.getAllPessoasWithEmptyStats();
 
         while(pessoas.next()){
-            Pessoa pessoa = new Pessoa(pessoas.getResultSet());
-            HashMap<String, Object> assinaturasStatus = asRepository.getAssinaturasStats(pessoa);
-            if(assinaturasStatus.size() > 0){
-                dissRepository.setAssinaturaStatsFromPessoa(
-                        pessoa,
-                        (BigDecimal) assinaturasStatus.get("QTD_ASS"),
-                        (BigDecimal) assinaturasStatus.get("QTD_ASS_ATIVA"),
-                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO"),
-                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO_3"),
-                        (BigDecimal) assinaturasStatus.get("TOTAL_PAGO_12")
-                );
+            Pessoa pessoa = new Pessoa();
+            pessoa.setResultSet(pessoas.getResultSet());
+            Stats stats = new Stats(){{
+                setPessoa(pessoa);
+            }};
+            stats = asRepository.getAssinaturasStats(pessoa, stats);
+            if(stats != null){
+                dissRepository.setAssinaturaStatsFromPessoa(stats);
             }
         }
         asRepository.close();

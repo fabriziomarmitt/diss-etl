@@ -1,11 +1,28 @@
 package br.com.marmitt.diss_etl.repository;
 
+import br.com.marmitt.diss_etl.model.IModel;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.sql.*;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Repository {
 
     private Connection connection;
+    private List<Result> resultList = new ArrayList<>();
+
+    public void close() {
+        for (Result result : resultList) {
+            result.close();
+        }
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
     public class Result {
         private final Statement statement;
@@ -30,15 +47,24 @@ public class Repository {
             return resultSet;
         }
 
-        public HashMap<String,Object> getSingleResult() throws SQLException {
-            HashMap<String, Object> hashMap = new HashMap<>();
-            resultSet.next();
-            for(int i = 1; i<=resultSet.getMetaData().getColumnCount(); i++){
-                hashMap.put(resultSet.getMetaData().getColumnName(i), resultSet.getObject(i));
+        public<T extends IModel> T getSingleResult(T model) throws SQLException {
+            if(!resultSet.next()){
+                return null;
             }
+            model.setResultSet(resultSet);
             resultSet.close();
             statement.close();
-            return hashMap;
+            return model;
+        }
+
+        public void close(){
+            try {
+                resultSet.close();
+                statement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
         }
     }
 
@@ -55,36 +81,53 @@ public class Repository {
         return connection;
     }
 
+    public Result query(PreparedStatement statement){
+        try {
+            return new Result(statement.executeQuery(), statement);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Result query(String query) {
-        Statement stmt;
-        Result result = null;
         try {
-            stmt = getConnection().createStatement();
-            result = new Result(stmt.executeQuery(query), stmt);
+            return query(getConnection().prepareStatement(query));
         } catch (SQLException e) {
             e.printStackTrace();
-        }finally {
-            return result;
         }
+        return null;
     }
 
-    public Result preparedQuery(PreparedStatement preparedStatement) {
-        Result result = null;
+    public<T extends IModel> List<T> query(PreparedStatement preparedStatement, Class<T> tClass) {
         try {
-            result = new Result(preparedStatement.executeQuery(), preparedStatement);
+            Result result = new Result(preparedStatement.executeQuery(), preparedStatement);
+            return query(result, tClass);
         } catch (SQLException e) {
             e.printStackTrace();
-        }finally {
-            return result;
         }
+        return null;
     }
 
-    public void close(){
+    private<T extends IModel> List<T> query(Result result, Class<T> tClass){
+        ArrayList<T> _return = new ArrayList<>();
         try {
-            connection.close();
-        }catch (Exception e){
-            return;
+            while(result.next()){
+                T model = tClass.newInstance();
+                model.setResultSet(result.getResultSet());
+                _return.add(model);
+            }
+        } catch (SQLException | InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+        }finally {
+            result.close();
         }
+        return _return;
+
+    }
+
+    public<T extends IModel> List<T> query(String query, Class<T> classType){
+        return query(query(query), classType);
     }
 
 }

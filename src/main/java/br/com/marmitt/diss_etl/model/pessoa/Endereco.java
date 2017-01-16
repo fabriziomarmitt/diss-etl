@@ -1,9 +1,12 @@
 package br.com.marmitt.diss_etl.model.pessoa;
 
+import br.com.marmitt.diss_etl.model.IModel;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class Endereco {
+public class Endereco implements IModel {
+    private Pessoa pessoa;
     private String cep;
     private String uf;
     private String cidade;
@@ -13,7 +16,7 @@ public class Endereco {
     private String numero;
     private String complemento;
 
-    public Endereco(ResultSet resultSet) throws SQLException {
+    public void setResultSet(ResultSet resultSet) throws SQLException {
         cep = resultSet.getString("CEP");
         uf = resultSet.getString("UF");
         cidade = resultSet.getString("CIDADE");
@@ -22,6 +25,15 @@ public class Endereco {
         logradouro = resultSet.getString("LOGRADOURO");
         numero = resultSet.getString("NUMERO");
         complemento = resultSet.getString("COMPLEMENTO");
+    }
+
+    public Pessoa getPessoa() {
+        return pessoa;
+    }
+
+    public Endereco setPessoa(Pessoa pessoa) {
+        this.pessoa = pessoa;
+        return this;
     }
 
     public String getCep() {

@@ -1,5 +1,6 @@
 package br.com.marmitt.diss_etl.model.pessoa;
 
+import br.com.marmitt.diss_etl.model.IModel;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 
-public class Pessoa {
+public class Pessoa implements IModel {
     private BigDecimal cdCpf;
     private List<BigDecimal> cdPessoa;
     private int cdJornal;
@@ -24,25 +25,6 @@ public class Pessoa {
     private String idEmail;
     private Date dtInclusao;
     private Date dtAlteracao;
-
-    public Pessoa(ResultSet resultSet) throws SQLException {
-        Gson gson = new Gson();
-        cdCpf = resultSet.getBigDecimal("CD_CPF");
-        try {
-            cdPessoa = gson.fromJson(resultSet.getString("CD_PESSOA"), new TypeToken<ArrayList<BigDecimal>>() {
-            }.getType());
-        }catch (Exception e){
-            cdPessoa = new ArrayList<BigDecimal>(){{ add(resultSet.getBigDecimal("CD_PESSOA")); }};
-        }
-        cdJornal = resultSet.getInt("CD_JORNAL");
-        nmPessoa = resultSet.getString("NM_PESSOA");
-        sexo = resultSet.getString("SEXO");
-        dtNasc = resultSet.getDate("DT_NASC");
-        idEstadoCivil = resultSet.getString("ID_ESTADO_CIVIL");
-        idEmail = resultSet.getString("ID_EMAIL");
-        dtInclusao = resultSet.getDate("DT_INCLUSAO");
-        dtAlteracao = resultSet.getDate("DT_ALTERACAO");
-    }
 
     public BigDecimal getCdCpf() {
         return cdCpf;
@@ -132,5 +114,25 @@ public class Pessoa {
     public Pessoa setDtAlteracao(Date dtAlteracao) {
         this.dtAlteracao = dtAlteracao;
         return this;
+    }
+
+    @Override
+    public void setResultSet(ResultSet resultSet) throws SQLException {
+        Gson gson = new Gson();
+        cdCpf = resultSet.getBigDecimal("CD_CPF");
+        try {
+            cdPessoa = gson.fromJson(resultSet.getString("CD_PESSOA"), new TypeToken<ArrayList<BigDecimal>>() {
+            }.getType());
+        }catch (Exception e){
+            cdPessoa = new ArrayList<BigDecimal>(){{ add(resultSet.getBigDecimal("CD_PESSOA")); }};
+        }
+        cdJornal = resultSet.getInt("CD_JORNAL");
+        nmPessoa = resultSet.getString("NM_PESSOA");
+        sexo = resultSet.getString("SEXO");
+        dtNasc = resultSet.getDate("DT_NASC");
+        idEstadoCivil = resultSet.getString("ID_ESTADO_CIVIL");
+        idEmail = resultSet.getString("ID_EMAIL");
+        dtInclusao = resultSet.getDate("DT_INCLUSAO");
+        dtAlteracao = resultSet.getDate("DT_ALTERACAO");
     }
 }

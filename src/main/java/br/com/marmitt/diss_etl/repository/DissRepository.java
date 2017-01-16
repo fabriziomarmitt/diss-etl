@@ -2,6 +2,8 @@ package br.com.marmitt.diss_etl.repository;
 
 import br.com.marmitt.diss_etl.model.pessoa.Endereco;
 import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
+import br.com.marmitt.diss_etl.model.pessoa.Stats;
+import br.com.marmitt.diss_etl.model.pessoa.TmpCpf;
 import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,22 +13,19 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 
 public class DissRepository extends AbstractRepository{
 
     public static Logger logger = LoggerFactory.getLogger(DissRepository.class);
 
-    public void insertCpfFromResultSet(ResultSet resultSet) throws SQLException {
-
+    public void insertTmpCpfs(List<TmpCpf> tmpCpfList) {
         logger.info("Starting inserting CPF");
-
         PreparedStatement stmt;
         Connection connection = repository.getConnection();
-
-        connection.createStatement().execute("TRUNCATE TABLE tmp_cpf");
-
         try {
+            connection.createStatement().execute("TRUNCATE TABLE tmp_cpf");
             connection.setAutoCommit(false);
             int batchSize = 1000;
             int count = 0;
@@ -34,19 +33,14 @@ public class DissRepository extends AbstractRepository{
 
             logger.info("Starting insert into tmp_cpf");
 
-            while(resultSet.next()){
+            for (TmpCpf tmpCpf : tmpCpfList) {
                 logger.info("Inserting row " + count);
-                BigDecimal cpf = resultSet.getBigDecimal("PESS_CD_CPF");
-                if(resultSet.wasNull()){
-                    logger.info(String.format("Ignoring %d because is NULL", count));
-                    continue;
-                }
-                stmt.setBigDecimal(1, cpf);
+                stmt.setBigDecimal(1, tmpCpf.getCpf());
                 stmt.addBatch();
                 if(++count % batchSize == 0){
                     logger.info("Executing batch");
-                   stmt.executeBatch();
-                   connection.commit();
+                    stmt.executeBatch();
+                    connection.commit();
                 }
             }
             logger.info("Finished loop. Terminating process");
@@ -100,20 +94,20 @@ public class DissRepository extends AbstractRepository{
 
     }
 
-    public Repository.Result getAllTmpCpf() {
-        return repository.query("SELECT cpf FROM tmp_cpf");
+    public List<TmpCpf> getAllTmpCpf() {
+        return repository.query("SELECT cpf FROM tmp_cpf", TmpCpf.class);
     }
 
-    public Repository.Result getAllTmpCpfNotInPessoa() {
-        return repository.query("SELECT cpf FROM tmp_cpf left join \"PESSOA\" p on p.\"CD_CPF\" = tmp_cpf.cpf where p.\"CD_CPF\" is null");
+    public List<TmpCpf> getAllTmpCpfNotInPessoa() {
+        return repository.query("SELECT cpf FROM tmp_cpf left join \"PESSOA\" p on p.\"CD_CPF\" = tmp_cpf.cpf where p.\"CD_CPF\" is null", TmpCpf.class);
     }
 
-    public Repository.Result getAllPessoasWithEmptyStats() {
-        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"QTD_ASS\" = 0");
+    public List<Pessoa> getAllPessoasWithEmptyStats() {
+        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"QTD_ASS\" = 0", Pessoa.class);
     }
 
-    public Repository.Result getAllPessoasWithEmptyEndereco() {
-        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"CEP\" IS NULL");
+    public List<Pessoa> getAllPessoasWithEmptyEndereco() {
+        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"CEP\" IS NULL", Pessoa.class);
     }
 
 
@@ -144,31 +138,32 @@ public class DissRepository extends AbstractRepository{
         }
     }
 
-    public void setAssinaturaStatsFromPessoa(Pessoa pessoa, BigDecimal qty_ass, BigDecimal qty_ass_ativa, BigDecimal total_paid, BigDecimal total_paid_3, BigDecimal total_paid_12) throws SQLException {
+    public void setAssinaturaStatsFromPessoa(Stats stats) throws SQLException {
         logger.info("Setting Assinatura Updating Stats");
         PreparedStatement  stmt;
         Connection connection = repository.getConnection();
         try{
-            stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"QTD_ASS\"=?,\"QTD_ASS_ATIVAS\"=?,\"TOTAL_PAGO\" =?, \"TOTAL_PAGO_3\"=?, \"TOTAL_PAGO_12\"=? WHERE \"CD_CPF\" = ?");
+            stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"QTD_ASS\"=?, \"QTD_ASS_ATIVA\"=?, \"TOTAL_PAGO\"=?, \"FREQUENCIA\"=?, \"TOTAL_PAGO_3\"=?, \"FREQUENCIA_3\"=?, \"TOTAL_PAGO_12\"=?, \"FREQUENCIA_12\"=?, \"RECENCIA\"=?, \"LONGEVIDADE\"=? WHERE \"CD_CPF\" = ?\n");
             int i = 1;
-            stmt.setBigDecimal(i++, qty_ass);
-            stmt.setBigDecimal(i++, qty_ass_ativa);
-            stmt.setBigDecimal(i++, total_paid);
-            stmt.setBigDecimal(i++, total_paid_3);
-            stmt.setBigDecimal(i++, total_paid_12);
-            stmt.setBigDecimal(i++, pessoa.getCdCpf());
+            stmt.setBigDecimal(i++, stats.getQtdAss());
+            stmt.setBigDecimal(i++, stats.getQtdAssAtiva());
+            stmt.setBigDecimal(i++, stats.getTotalPago());
+            stmt.setBigDecimal(i++, stats.getFrequencia());
+            stmt.setBigDecimal(i++, stats.getTotalPago3());
+            stmt.setBigDecimal(i++, stats.getFrequencia3());
+            stmt.setBigDecimal(i++, stats.getTotalPago12());
+            stmt.setBigDecimal(i++, stats.getFrequencia12());
+            stmt.setBigDecimal(i++, stats.getRecencia());
+            stmt.setBigDecimal(i++, stats.getLongevidade());
+            stmt.setBigDecimal(i++, stats.getPessoa().getCdCpf());
             stmt.execute();
             stmt.close();
-            logger.info("PESSOA with CPF: " + pessoa.getCdCpf() + " updated with success STATS");
+            logger.info("PESSOA with CPF: " + stats.getPessoa().getCdCpf() + " updated with success STATS");
         } catch (Exception e) {
-            logger.info("Updating of PESSOA with CPF " + pessoa.getCdCpf() + " failed");
+            logger.info("Updating of PESSOA with CPF " + stats.getPessoa().getCdCpf() + " failed");
             throw e;
         }
 
-    }
-
-    public void close(){
-        close();
     }
 
 }
