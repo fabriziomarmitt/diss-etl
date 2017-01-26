@@ -8,10 +8,8 @@ import com.google.gson.Gson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -23,7 +21,6 @@ public class DissRepository extends AbstractRepository{
     public void insertTmpCpfs(List<TmpCpf> tmpCpfList) {
         logger.info("Starting inserting CPF");
         PreparedStatement stmt;
-        Connection connection = repository.getConnection();
         try {
             connection.createStatement().execute("TRUNCATE TABLE tmp_cpf");
             connection.setAutoCommit(false);
@@ -59,7 +56,8 @@ public class DissRepository extends AbstractRepository{
 
     public void truncatePessoa() throws SQLException {
         logger.info("Truncating PESSOA");
-        this.repository.getConnection().createStatement().execute("TRUNCATE TABLE \"PESSOA\"");
+        connection.setAutoCommit(true);
+        connection.createStatement().execute("TRUNCATE TABLE \"PESSOA\"");
         logger.info("Truncated PESSOA");
     }
 
@@ -67,9 +65,9 @@ public class DissRepository extends AbstractRepository{
         logger.info("Starting insert into PESSOA with ID: " + pessoa.getCdCpf());
 
         PreparedStatement  stmt;
-        Connection connection = repository.getConnection();
         try{
             Gson gson = new Gson();
+            connection.setAutoCommit(true);
             stmt = connection.prepareStatement("INSERT INTO \"PESSOA\"(\"CD_CPF\", \"CD_PESSOA\", \"CD_JORNAL\", \"NM_PESSOA\", \"SEXO\", \"DT_NASC\", \"ID_ESTADO_CIVIL\", \"ID_EMAIL\", \"DT_INCLUSAO\", \"DT_ALTERACAO\") VALUES (?, (?)::jsonb, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             int i = 1;
@@ -95,29 +93,29 @@ public class DissRepository extends AbstractRepository{
     }
 
     public List<TmpCpf> getAllTmpCpf() {
-        return repository.query("SELECT cpf FROM tmp_cpf", TmpCpf.class);
+        return query("SELECT cpf FROM tmp_cpf", TmpCpf.class);
     }
 
     public List<TmpCpf> getAllTmpCpfNotInPessoa() {
-        return repository.query("SELECT cpf FROM tmp_cpf left join \"PESSOA\" p on p.\"CD_CPF\" = tmp_cpf.cpf where p.\"CD_CPF\" is null", TmpCpf.class);
+        return query("SELECT cpf FROM tmp_cpf left join \"PESSOA\" p on p.\"CD_CPF\" = tmp_cpf.cpf where p.\"CD_CPF\" is null", TmpCpf.class);
     }
 
-    public List<Pessoa> getAllPessoasWithEmptyStats() {
-        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"QTD_ASS\" = 0", Pessoa.class);
+    public Result getAllPessoasWithEmptyStats() {
+        return query("SELECT * FROM \"PESSOA\" WHERE \"QTD_ASS\" = 0");
     }
 
-    public List<Pessoa> getAllPessoasWithEmptyEndereco() {
-        return repository.query("SELECT * FROM \"PESSOA\" WHERE \"CEP\" IS NULL", Pessoa.class);
+    public Result getAllPessoasWithEmptyEndereco() {
+        return query("SELECT * FROM \"PESSOA\" p LEFT JOIN tmp_processed tp ON tp.cpf = p.\"CD_CPF\" WHERE tp.cpf IS NULL ORDER BY \"DT_ALTERACAO\",\"DT_INCLUSAO\" DESC");
     }
 
 
-    public void setEnderecoFromPessoa(Pessoa pessoa, Endereco endereco) throws SQLException {
-        logger.info("Starting update PESSOA with CPF: " + pessoa.getCdCpf());
+    public void setEnderecoFromPessoa(Endereco endereco) throws SQLException {
+        logger.info("Starting update PESSOA with CPF: " + endereco.getPessoa().getCdCpf());
 
         PreparedStatement  stmt;
-        Connection connection = repository.getConnection();
         try{
             Gson gson = new Gson();
+            connection.setAutoCommit(true);
             stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"CEP\"=?, \"UF\"=?, \"CIDADE\"=?, \"BAIRRO\"=?, \"TIPO_LOGRADOURO\"=?, \"LOGRADOURO\"=?, \"NUMERO\"=?, \"COMPLEMENTO\"=? WHERE \"CD_CPF\" = ?");
             int i = 1;
             stmt.setString(i++, endereco.getCep());
@@ -128,12 +126,12 @@ public class DissRepository extends AbstractRepository{
             stmt.setString(i++, endereco.getLogradouro());
             stmt.setString(i++, endereco.getNumero());
             stmt.setString(i++, endereco.getComplemento());
-            stmt.setBigDecimal(i++, pessoa.getCdCpf());
+            stmt.setBigDecimal(i++, endereco.getPessoa().getCdCpf());
             stmt.execute();
             stmt.close();
-            logger.info("PESSOA with CPF: " + pessoa.getCdCpf() + " updated with success ENDERECO");
+            logger.info("PESSOA with CPF: " + endereco.getPessoa().getCdCpf() + " updated with success ENDERECO");
         } catch (SQLException e) {
-            logger.info("Updating of PESSOA with CPF " + pessoa.getCdCpf() + " failed");
+            logger.info("Updating of PESSOA with CPF " + endereco.getPessoa().getCdCpf() + " failed");
             throw e;
         }
     }
@@ -141,8 +139,8 @@ public class DissRepository extends AbstractRepository{
     public void setAssinaturaStatsFromPessoa(Stats stats) throws SQLException {
         logger.info("Setting Assinatura Updating Stats");
         PreparedStatement  stmt;
-        Connection connection = repository.getConnection();
         try{
+            connection.setAutoCommit(true);
             stmt = connection.prepareStatement("UPDATE \"PESSOA\" SET \"QTD_ASS\"=?, \"QTD_ASS_ATIVA\"=?, \"TOTAL_PAGO\"=?, \"FREQUENCIA\"=?, \"TOTAL_PAGO_3\"=?, \"FREQUENCIA_3\"=?, \"TOTAL_PAGO_12\"=?, \"FREQUENCIA_12\"=?, \"RECENCIA\"=?, \"LONGEVIDADE\"=? WHERE \"CD_CPF\" = ?\n");
             int i = 1;
             stmt.setBigDecimal(i++, stats.getQtdAss());
@@ -166,4 +164,21 @@ public class DissRepository extends AbstractRepository{
 
     }
 
+    public void setProcessed(Pessoa pessoa) throws SQLException {
+        logger.info("---------\nSetting getMostLikelyEndereco Porcessed");
+        PreparedStatement  stmt;
+        try{
+            connection.setAutoCommit(true);
+            stmt = connection.prepareStatement("INSERT INTO tmp_processed VALUES(?)");
+            int i = 1;
+            stmt.setBigDecimal(i++, pessoa.getCdCpf());
+            stmt.execute();
+            stmt.close();
+            logger.info("Pessoa CPF: " + pessoa.getCdCpf() + " processed");
+        } catch (Exception e) {
+            logger.info("Set Perocessed PESSOA with CPF " + pessoa.getCdCpf() + " failed");
+            throw e;
+        }
+
+    }
 }

@@ -55,4 +55,22 @@ CREATE INDEX idx_only_pessoa
     ON "PESSOA" ( "CD_CPF" );
 
 CREATE INDEX idx_only_pessoa_cep
-    ON "PESSOA" ( "CEP" );
+  ON "PESSOA" ( "CEP" );
+
+CREATE INDEX idx_only_pessoa_qtd_ass
+    ON "PESSOA" ( "QTD_ASS" );
+
+CREATE TABLE tmp_processed
+(
+  cpf bigint NOT NULL,
+  CONSTRAINT pk_tmp_processed PRIMARY KEY (cpf)
+)
+WITH (
+OIDS=FALSE
+);
+ALTER TABLE tmp_processed
+  OWNER TO postgres;
+
+CREATE INDEX idx_only_tmp_processed
+  ON tmp_processed ( cpf );
+

@@ -1,8 +1,8 @@
 package br.com.marmitt.diss_etl.repository;
 
-import br.com.marmitt.diss_etl.model.IModel;
 import br.com.marmitt.diss_etl.model.pessoa.Endereco;
 import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
+import br.com.marmitt.diss_etl.model.pessoa.Stats;
 import br.com.marmitt.diss_etl.model.pessoa.TmpCpf;
 
 import java.math.BigDecimal;
@@ -18,8 +18,8 @@ public class AsRepository extends AbstractRepository{
 
     Logger logger = Logger.getLogger(String.valueOf(AsRepository.class));
 
-    public Repository.Result getPessoas() throws SQLDataException {
-        return repository.query("SELECT * FROM pessoa");
+    public Result getPessoas() throws SQLDataException {
+        return query("SELECT * FROM pessoa");
     }
 
     public List<TmpCpf> getPessoasUniqueCpf() throws SQLDataException {
@@ -29,11 +29,10 @@ public class AsRepository extends AbstractRepository{
                 + " AND p.pess_cd_jornal = 1"
                 + " AND p.pess_cd_cpf IS NOT NULL"
                 + " GROUP BY p.pess_cd_cpf";
-        return repository.query(query, TmpCpf.class);
+        return query(query, TmpCpf.class);
     }
 
     public List<Pessoa> getPessoaByCpf(BigDecimal cpf) throws SQLException {
-        Connection connection = repository.getConnection();
         PreparedStatement preparedStatement
                 = connection.prepareStatement("select " +
                 "   p.pess_cd_cpf CD_CPF " +
@@ -49,42 +48,26 @@ public class AsRepository extends AbstractRepository{
                 "from pessoa p " +
                 "where p.pess_cd_jornal = 1 and p.pess_cd_cpf = ?");
         preparedStatement.setBigDecimal(1, cpf);
-        return repository.query(preparedStatement, Pessoa.class);
+        return query(preparedStatement, Pessoa.class);
     }
 
-    public Endereco getMostLikelyEndereco(List<BigDecimal> cdPessoaList) throws SQLException, InterruptedException {
-        Connection connection = repository.getConnection();
-        String query = "select " +
-                "  ve.END_CD_CEP CEP " +
-                "  , ve.CID_CD_ESTADO UF " +
-                "  , ve.CID_NM_CID CIDADE " +
-                "  , ve.BAIR_NM_BAIRRO BAIRRO " +
-                "  , ve.LOGR_TP_LOGR TIPO_LOGRADOURO " +
-                "  , ve.LOGR_NM_LOGR LOGRADOURO " +
-                "  , ve.END_NR_RESID NUMERO " +
-                "  , (ve.LOGR_TP_LOGR || ' ' || ve.END_NR_COMPL) COMPLEMENTO " +
-                " from periodo_entrega pe   " +
-                "  inner join periodo_assinatura pa " +
-                "    on pa.PERASS_CD_ASS = pe.PENTR_CD_ASS " +
-                "    and pa.perass_cd_jornal = pe.PENTR_CD_JORNAL     " +
-                "  inner join v_endereco ve " +
-                "    on ve.END_CD_ENDERECO = pe.pentr_cd_endereco " +
-                " where pa.PERASS_CD_RESPONSAVEL IN (" + String.join(",", Collections.nCopies(cdPessoaList.size(), "?")) + ") " +
-                " and rownum = 1 " +
-                " order by pa.perass_dt_termino desc";
+    public Endereco getMostLikelyEndereco(Pessoa pessoa) throws SQLException, InterruptedException {
+        List<BigDecimal> cdPessoaList = pessoa.getCdPessoa();
+        String query = "select   ve.END_CD_CEP CEP   , ve.CID_CD_ESTADO UF   , ve.CID_NM_CID CIDADE   , ve.BAIR_NM_BAIRRO BAIRRO   , ve.LOGR_TP_LOGR TIPO_LOGRADOURO   , ve.LOGR_NM_LOGR LOGRADOURO   , ve.END_NR_RESID NUMERO   , (ve.LOGR_TP_LOGR || ' ' || ve.END_NR_COMPL) COMPLEMENTO  from periodo_entrega pe     inner join periodo_assinatura pa     on pa.PERASS_CD_ASS = pe.PENTR_CD_ASS     and pa.perass_cd_jornal = pe.PENTR_CD_JORNAL       inner join v_endereco ve     on ve.END_CD_ENDERECO = pe.pentr_cd_endereco  where pa.PERASS_CD_RESPONSAVEL IN (" + String.join(",", Collections.nCopies(cdPessoaList.size(), "?")) + ")  and rownum = 1  order by pa.perass_dt_termino desc";
         PreparedStatement preparedStatement
                 = connection.prepareStatement(query);
         for (int i = 0; i < cdPessoaList.size(); i++){
             preparedStatement.setBigDecimal(i+1, cdPessoaList.get(i));
         }
-        Repository.Result result = repository.query(preparedStatement);
-        return result != null ? new Endereco() {{
-            setResultSet(result.getResultSet());
-        }} : null;
+        List<Endereco> enderecoList = query(preparedStatement, Endereco.class);
+        if(enderecoList.size() > 0){
+            enderecoList.get(0).setPessoa(pessoa);
+            return enderecoList.get(0);
+        }
+        return null;
     }
 
-    public<T extends IModel> T getAssinaturasStats(Pessoa pessoa, T model) throws SQLException {
-        Connection connection = repository.getConnection();
+    public Stats getAssinaturasStats(Pessoa pessoa) throws SQLException {
         String query = " select " +
                 "   count(1) QTD_ASS   " +
                 "   , nvl(sum(CASE WHEN sit_nm_situacao = 'ATIVO' THEN 1 ELSE 0 END),0) QTD_ASS_ATIVA   " +
@@ -161,7 +144,11 @@ public class AsRepository extends AbstractRepository{
         for (int i = 0; i < pessoa.getCdPessoa().size(); i++){
             preparedStatement.setBigDecimal(i+1, pessoa.getCdPessoa().get(i));
         }
-        Repository.Result result = repository.query(preparedStatement);
-        return result.getSingleResult(model);
+        List<Stats> statsList = query(preparedStatement, Stats.class);
+        if(statsList.size() > 0){
+            statsList.get(0).setPessoa(pessoa);
+            return statsList.get(0);
+        }
+        return null;
     }
 }

@@ -5,13 +5,12 @@ import br.com.marmitt.diss_etl.model.pessoa.Endereco;
 import br.com.marmitt.diss_etl.model.pessoa.Pessoa;
 import br.com.marmitt.diss_etl.model.pessoa.Stats;
 import br.com.marmitt.diss_etl.model.pessoa.TmpCpf;
+import br.com.marmitt.diss_etl.repository.AbstractRepository;
 import br.com.marmitt.diss_etl.repository.AsRepository;
 import br.com.marmitt.diss_etl.repository.DissRepository;
-import br.com.marmitt.diss_etl.repository.Repository;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -25,9 +24,9 @@ public class Main {
     public static void main(String[] args){
         try {
             //Main.stepOne();
-            Main.stepTwo();
-            //Main.stepThree();
-            //Main.stepFour();
+            //Main.stepTwo();
+            Main.stepThree();
+            Main.stepFour();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -85,25 +84,23 @@ public class Main {
 
     public static void stepThree() throws SQLException, InterruptedException {
         // Buscar Endereço mais provável para cada pessoa
-        //
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
-
-        List<Pessoa> allTmpCdPessoas = dissRepository.getAllPessoasWithEmptyEndereco();
-
-        for(Pessoa pessoa : allTmpCdPessoas){
-            Endereco getMostLikelyEndereco = asRepository.getMostLikelyEndereco(pessoa.getCdPessoa());
-
+        AbstractRepository.Result allTmpCdPessoas = dissRepository.getAllPessoasWithEmptyEndereco();
+        int index = 0;
+        while (allTmpCdPessoas.next()){
+            Pessoa pessoa = allTmpCdPessoas.getResult(Pessoa.class);
+            Endereco getMostLikelyEndereco = asRepository.getMostLikelyEndereco(pessoa);
             if(getMostLikelyEndereco != null){
                 dissRepository.setEnderecoFromPessoa(getMostLikelyEndereco);
-            } else {
-                getMostLikelyEndereco.getResultSet().getStatement().close();
-                getMostLikelyEndereco.getResultSet().close();
-                pessoa.getCdPessoa().stream().forEach( cd -> System.out.print(cd.toString() + ", "));
-                System.out.println("\n----");
             }
+            dissRepository.setProcessed(pessoa);
+            getMostLikelyEndereco = null;
+            pessoa = null;
+            if(++index % 100 == 0 )
+                System.gc();
         }
-
+        allTmpCdPessoas.close();
         asRepository.close();
         dissRepository.close();
     }
@@ -112,22 +109,19 @@ public class Main {
         // Insert Qtd Assinaturas por pessoa
         AsRepository asRepository = new AsRepository();
         DissRepository dissRepository = new DissRepository();
-
-        Repository.Result pessoas = dissRepository.getAllPessoasWithEmptyStats();
-
+        AbstractRepository.Result pessoas = dissRepository.getAllPessoasWithEmptyStats();
         while(pessoas.next()){
-            Pessoa pessoa = new Pessoa();
-            pessoa.setResultSet(pessoas.getResultSet());
-            Stats stats = new Stats(){{
-                setPessoa(pessoa);
-            }};
-            stats = asRepository.getAssinaturasStats(pessoa, stats);
+            Pessoa pessoa = pessoas.getResult(Pessoa.class);
+            Stats stats = asRepository.getAssinaturasStats(pessoa);
             if(stats != null){
                 dissRepository.setAssinaturaStatsFromPessoa(stats);
+                stats = null;
+                pessoa = null;
+                System.gc();
             }
         }
+        pessoas.close();
         asRepository.close();
         dissRepository.close();
-
     }
 }
